@@ -1,0 +1,1 @@
+sudo mvn clean package

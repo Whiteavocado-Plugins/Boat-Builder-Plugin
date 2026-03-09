@@ -1,0 +1,12 @@
+name: boatbuilder
+version: 1.0
+main: com.wwwqr.plugin.Main
+api-version: 1.21
+description: About A Minecraft plugin that let's you create custom working boat-structures
+authors:
+    -   wwwqr
+
+commands:
+    boat:
+        description: Build your own boat!
+        usage: /boat <create | edit | save | mount | unmount | remove>
