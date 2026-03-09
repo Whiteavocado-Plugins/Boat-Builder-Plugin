@@ -11,7 +11,7 @@ import com.wwwqr.plugin.database.DatabaseDetails;
 
 import org.bukkit.Location;
 
-public class DatabaseManager implements DatabaseDetails {
+public class DatabaseManager {
     private final JavaPlugin plugin;
     private static Connection conn;
 
