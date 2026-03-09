@@ -7,9 +7,11 @@ import java.sql.SQLException;
 import java.util.logging.Logger;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import com.wwwqr.plugin.database.DatabaseDetails;
+
 import org.bukkit.Location;
 
-public class DatabaseManager {
+public class DatabaseManager implements DatabaseDetails {
     private final JavaPlugin plugin;
     private static Connection conn;
 
@@ -24,9 +26,9 @@ public class DatabaseManager {
             }
 
             conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/boatbuilder",
-                "wwwqr",
-                "MarfKas23&"
+                DatabaseDetails.url,
+                DatabaseDetails.user,
+                DatabaseDetails.pw
             );
 
         }
