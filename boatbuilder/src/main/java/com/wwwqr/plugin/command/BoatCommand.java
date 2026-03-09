@@ -46,72 +46,93 @@ public class BoatCommand implements CommandExecutor {
 
         switch (arg) {
             case "create":
-                return create(player);
+                create(player);
+                return true;
 
             case "edit":
-                return edit(player);
+                edit(player);
+                return true;
 
             case "save":
-                return save(player);
+                save(player);
+                return true;
 
             case "mount":
-                return mount(player);
+                mount(player);
+                return true;
 
             case "unmount":
-                return unmount(player);
+                unmount(player);
+                return true;
                 
             case "remove":
-                return remove(player);
+                remove(player);
+                return true;
         
             default:
                 return false;
         }
     }
 
-    private boolean ownsABoat(Player player) {
+    public boolean ownsABoat(Player player) {//Only use inside a async task!
         UUID playerUUID = player.getUniqueId();
         boolean status = false;
+        String checkQuery = "SELECT COUNT(ID) FROM boat WHERE ownerUUID = ?";
 
-        Bukkit.getScheduler().runTaskAsynchronously(
-            plugin,
-            () -> {
-                String checkQuery = "SELECT COUNT(ID) FROM boat WHERE ownerUUID = ?";
+        try {
+            PreparedStatement stmt = DatabaseManager.getConn().prepareStatement(checkQuery);
+            stmt.setString(1, playerUUID.toString());
 
-                try {
-                    PreparedStatement stmt = DatabaseManager.getConn().prepareStatement(checkQuery);
-                    stmt.setString(1, playerUUID.toString());
+            ResultSet rs = stmt.executeQuery();
+            rs.next();
+            int count = rs.getInt(1);
 
-                    ResultSet rs = stmt.executeQuery();
-                    rs.next();
-                    int count = rs.getInt(1);
-
-                    if (count != 0) {
-                        status = true;
-                        return;
-                    }
-                }
-                catch (Exception e) {
-                    e.printStackTrace();
-                    return;
-                }
-            }
-        );
+            status = count != 0;
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
 
         return status;
     }
 
-    private boolean create(Player player) {
+    public boolean editsABoat(Player player) {//Only use inside a async task!
+        UUID playerUUID = player.getUniqueId();
+        boolean status = false;
+        String query = "SELECT inEditMode FROM boat WHERE ownerUUID = ?";
+
+        try {
+            PreparedStatement stmt = DatabaseManager.getConn().prepareStatement(query);
+            stmt.setString(1, playerUUID.toString());
+
+            ResultSet rs = stmt.executeQuery();
+            if (!rs.next()) {
+                return status;
+            }
+
+            return rs.getInt("inEditMode") == 1;
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return status;
+    }
+
+    private void create(Player player) {
         UUID playerUUID = player.getUniqueId();
         Location playerLoc = player.getLocation();
-
-        if (ownsABoat(player)) {
-            Global.showMsg(player, "You already own a boat!");
-            return true;
-        }
 
         Bukkit.getScheduler().runTaskAsynchronously(
             plugin,
             () -> {
+                if (ownsABoat(player)) {
+                    Bukkit.getScheduler().runTask(plugin, () ->
+                        Global.showMsg(player, "You already own a boat!")
+                    );
+                    return;
+                }
+
                 String insertQuery = "INSERT INTO boat(ownerUUID, x, y, z) VALUES (?, ?, ?, ?)";
                 try {
                     PreparedStatement stmt = DatabaseManager.getConn().prepareStatement(insertQuery);
@@ -126,7 +147,7 @@ public class BoatCommand implements CommandExecutor {
                     Bukkit.getScheduler().runTask(
                         plugin,
                         () -> {
-                            Global.showMsg(player, "You've created a boat! Use /boat edit to build it");
+                            Global.showMsg(player, "You've created a boat! Use [/boat edit] to build it");
                         }
                     );
 
@@ -138,49 +159,39 @@ public class BoatCommand implements CommandExecutor {
                 }
             }
         );
-
-        return true;
     }
 
-    private boolean edit(Player player) {
+    private void edit(Player player) {
         UUID playerUUID = player.getUniqueId();
-
-        if (!ownsABoat(player)) {
-            Global.showMsg(player, "You don't have a boat yet! (/boat create)");
-            return true;
-        }
 
         Bukkit.getScheduler().runTaskAsynchronously(
             plugin,
             () -> {
-                String checkQuery = "SELECT inEditMode FROM boat WHERE ownerUUID = ?";
+                if (!ownsABoat(player)) {
+                    Bukkit.getScheduler().runTask(plugin, () ->
+                        Global.showMsg(player, "You don't own a boat yet! Use [/boat create]")
+                    );
+                    return;
+                }
+
+                if (editsABoat(player)) {
+                    Bukkit.getScheduler().runTask(plugin, () ->
+                        Global.showMsg(player, "You're already in boat-edit mode! Use [/boat save] to exit edit mode")
+                    );
+                    return;
+                }
+
                 String updateQuery = "UPDATE boat SET inEditMode = 1 WHERE ownerUUID = ?";
 
                 try {
-                    PreparedStatement stmt = DatabaseManager.getConn().prepareStatement(checkQuery);
-
+                    PreparedStatement stmt = DatabaseManager.getConn().prepareStatement(updateQuery);
                     stmt.setString(1, playerUUID.toString());
 
-                    ResultSet rs = stmt.executeQuery();
-                    rs.next();
-                    int count = rs.getInt(1);
+                    stmt.executeUpdate();
 
-                    if (count != 0) {
-                        Bukkit.getScheduler().runTask(
-                            plugin,
-                            () -> {
-                                Global.showMsg(player, "You're already in edit mode!");
-                                return;
-                            }
-                        );
-
-                        return;
-                    }
-
-                    stmt = DatabaseManager.getConn().prepareStatement(updateQuery);
-                    stmt.setString(1, playerUUID.toString());
-
-                    
+                    Bukkit.getScheduler().runTask(plugin, () ->
+                        Global.showMsg(player, "Entered boat-edit mode successfully")
+                    );
                 }
                 catch (Exception e) {
                     e.printStackTrace();
@@ -188,23 +199,21 @@ public class BoatCommand implements CommandExecutor {
                 }
             }
         );
-
-        return true;
     }
 
-    private boolean save(Player player) {
-        return true;
+    private void save(Player player) {
+
     }
 
-    private boolean mount(Player player) {
-        return true;
+    private void mount(Player player) {
+
     }
 
-    private boolean unmount(Player player) {
-        return true;
+    private void unmount(Player player) {
+
     }
 
-    private boolean remove(Player player) {
-        return true;
+    private void remove(Player player) {
+
     }
 }
